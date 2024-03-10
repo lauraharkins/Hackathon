@@ -28,12 +28,12 @@ class Player(Sprite):
 
         self.speed = 4
         self.jump_speed = 20
+        self.min_jumpspeed = 5
+        self.prev_key = pygame.key.get_pressed()
         self.animation_index = 0
         self.facing_left = False
         self.vsp = 0
         self.gravity = 1
-
-        self.collision_scale = 0.5
 
         self.load_sprites()
 
@@ -81,7 +81,7 @@ class Player(Sprite):
         if dy < 0:
             while self.get_collision(0, dy, blocks):
                 dy += 1
-                self.vsp = 0
+                self.vsp = -0.9
         else:
             while self.get_collision(0, dy, blocks):
                 dy -= 1
@@ -133,8 +133,13 @@ class Player(Sprite):
             self.run_animation()
         if key[pygame.K_UP] and onground:
             self.vsp = -self.jump_speed
+        elif self.prev_key[pygame.K_UP] and not key[pygame.K_UP]:
+            if self.vsp < -self.min_jumpspeed:
+                self.vsp = -self.min_jumpspeed
         else:
             self.idle_animation()
+
+        self.prev_key = key
 
         if self.vsp < 10 and not onground:
             self.jump_animation()
@@ -218,7 +223,7 @@ class Level:
                     spikes.add(Spike(tilemap["spike"], col*32+16, row*32+16))
                     continue
                 elif self.block_map[row][col] == 'E':
-                    self.end_sprite = goal.add(Sprite(tilemap["end"], col*32+16, row*32+16))
+                    goal.add(Sprite(tilemap["end"], col*32+16, row*32+16))
                     continue
                 else:
                     name = "grass_2"
