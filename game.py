@@ -1,5 +1,6 @@
 import pygame
 import numpy
+import gen_levels
 
 WIDTH = 512
 HEIGHT = 512
@@ -34,6 +35,7 @@ class Player(Sprite):
         self.facing_left = False
         self.vsp = 0
         self.gravity = 1
+        self.NEW_LEVEL = False
 
         self.load_sprites()
 
@@ -76,7 +78,7 @@ class Player(Sprite):
             self.reset()
         
         elif self.check_collision(dx, dy, spikes, goal) == 'G':
-            NEW_LEVEL = True
+            self.NEW_LEVEL = True
 
         if dy < 0:
             while self.get_collision(0, dy, blocks):
@@ -245,10 +247,11 @@ def load_level(filename):
     f.close()
     return level
 
-# flag
-NEW_LEVEL = False
+
 
 def main():
+    # flag
+    #NEW_LEVEL = False
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     clock = pygame.time.Clock()
@@ -258,7 +261,7 @@ def main():
     goal = pygame.sprite.Group()
     background = pygame.sprite.Group()
     load_tiles()
-    level = Level(load_level("levels_10.txt"))
+    level = Level(gen_levels.generate_level())
     player = Player(level.start[0]+16, level.start[1]+16)
     level.draw(blocks, spikes, goal)
 
@@ -273,15 +276,17 @@ def main():
         pygame.event.pump()
         player.update(blocks, spikes, goal)
 
-        if NEW_LEVEL:
+        if player.NEW_LEVEL:
             blocks = pygame.sprite.Group()
             spikes = pygame.sprite.Group()
             goal = pygame.sprite.Group()
             load_tiles()
             # HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
-            level = Level("HEREEEE")
+            print("new gen")
+            level = Level(gen_levels.generate_level())
             player = Player(level.start[0]+16, level.start[1]+16)
             level.draw(blocks, spikes, goal)
+            player.NEW_LEVEL = False
 
         # Draw loop
         screen.fill(BACKGROUND)
