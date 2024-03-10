@@ -1,8 +1,8 @@
 import pygame
 import numpy
 
-WIDTH = 720
-HEIGHT = 480
+WIDTH = 512
+HEIGHT = 512
 BACKGROUND = (0, 0, 0)
 
 class Sprite(pygame.sprite.Sprite):
@@ -31,6 +31,8 @@ class Player(Sprite):
         self.vsp = 0
         self.gravity = 1
 
+        self.collision_scale = 0.5
+
         self.load_sprites()
 
     def load_sprites(self):
@@ -48,8 +50,13 @@ class Player(Sprite):
         dx = x
         dy = y
 
-        while self.check_collision(0, dy, blocks):
-            dy -= 1
+        if dy < 0:
+            while self.check_collision(0, dy, blocks):
+                dy += 1
+                self.vsp = 0
+        else:
+            while self.check_collision(0, dy, blocks):
+                dy -= 1
         while self.check_collision(dx, dy, blocks):
             dx -= numpy.sign(dx)
 
@@ -115,11 +122,16 @@ class Block(Sprite):
     def __init__(self, sprite, startx, starty):
         super().__init__(sprite, startx, starty)
 
+class Spike(Sprite):
+    def __init__(self, sprite, startx, starty):
+        super().__init__(sprite, startx, starty)
+        
+
 def load_sprite_sheet(filename, n):
     sheet = pygame.image.load(filename).convert_alpha()
     anim = []
     for i in range(n):
-        img = pygame.Surface((32,32)).convert_alpha()
+        img = pygame.Surface((32,32), pygame.SRCALPHA).convert_alpha()
         img.blit(sheet, (0,0), (i*32, 0, 32, 32))
         anim.append(img)
     return anim
@@ -129,36 +141,92 @@ def load_2D_spritesheet(filename, n, m):
     sprites = [[0] * m for _ in range(n)]
     for j in range(m):
         for i in range(n):
-            img = pygame.Surface((16,16)).convert_alpha()
+            img = pygame.Surface((16,16), pygame.SRCALPHA).convert_alpha()
             img.blit(sheet, (0,0), (j*16, i*16, 16, 16))
             sprites[i][j] = img
     return sprites
 
+def double_size(img):
+    bigger_img = pygame.transform.scale(img, (32,32))
+    return bigger_img
+
 tilemap = {}
 def load_tiles():
     tiles = load_2D_spritesheet("Assets/Pixel Adventure 1/Free/Terrain/Terrain (16x16).png", 11, 22)
-    tilemap["grass_1"] = tiles[0][6]
-    tilemap["grass_2"] = tiles[0][7]
-    tilemap["grass_3"] = tiles[0][8]
-    tilemap["grass_4"] = tiles[1][6]
-    tilemap["grass_5"] = tiles[1][7]
-    tilemap["grass_6"] = tiles[1][8]
-    tilemap["grass_7"] = tiles[2][6]
-    tilemap["grass_8"] = tiles[2][7]
-    tilemap["grass_9"] = tiles[2][8]
+    tilemap["grass_1"] = double_size(tiles[0][6])
+    tilemap["grass_2"] = double_size(tiles[0][7])
+    tilemap["grass_3"] = double_size(tiles[0][8])
+    tilemap["grass_4"] = double_size(tiles[1][6])
+    tilemap["grass_5"] = double_size(tiles[1][7])
+    tilemap["grass_6"] = double_size(tiles[1][8])
+    tilemap["grass_7"] = double_size(tiles[2][6])
+    tilemap["grass_8"] = double_size(tiles[2][7])
+    tilemap["grass_9"] = double_size(tiles[2][8])
+    tilemap["background"] = pygame.image.load("Assets/Pixel Adventure 1/Free/Background/Brown.png")
+    tilemap["spike"] = double_size(pygame.image.load("Assets/Pixel Adventure 1/Free/Traps/Spiked Ball/Spiked Ball.png"))
+
+#def choose_tile(x,y):
+
+class Level:
+    def __init__(self, block_map):
+        self.block_map = block_map
+
+        for row in range(len(block_map)):
+            for col in range(len(block_map[0])):
+                if block_map[row][col] == 'S':
+                    self.start = (col*32+16, row*32+16)
+                if block_map[row][col] == 'E':
+                    self.end = (col*32+16, row*32+16)
+
+    def draw(self, blocks, spikes):
+        for row in range(len(self.block_map)):
+            for col in range(len(self.block_map[0])):
+                if self.block_map[row][col] == ' ' or self.block_map[row][col] == 'S':
+                    continue
+                elif self.block_map[row][col] == 'H':
+                    spikes.add(Spike(tilemap["spike"], col*32+16, row*32+16))
+                    continue
+                else:
+                    name = "grass_2"
+                    if not (row == 0):
+                        if self.block_map[row-1][col] == '#':
+                            name = "grass_5"
+                    blocks.add(Block(tilemap[name], col*32+16, row*32+16))
+
+def load_level(filename):
+    #open and read the file after the overwriting:
+    f = open(filename, "r")
+    level=[]
+    for i in range(16):
+        line = f.readline()
+        row=[]
+        for c in line:
+            row.append(c)
+        level.append(row)
+    f.close()
+    return level
+
 
 def main():
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     clock = pygame.time.Clock()
 
-    player = Player(100, 200)
 
     blocks = pygame.sprite.Group()
+    spikes = pygame.sprite.Group()
+    background = pygame.sprite.Group()
     load_tiles()
+    level = Level(load_level("levels_10.txt"))
+    player = Player(level.start[0]+16, level.start[1]+16)
+    level.draw(blocks, spikes)
 
-    for blk in range(8, WIDTH, 16):
-        blocks.add(Block(tilemap["grass_2"], blk, HEIGHT-8))
+    # for blk in range(8, WIDTH, 16):
+    #     blocks.add(Block(tilemap["grass_2"], blk, HEIGHT-8))
+
+    for x in range(32, WIDTH+64, 64):
+        for y in range(32, HEIGHT+64, 64):
+            background.add(Sprite(tilemap["background"], x, HEIGHT-16-y))
 
     while True:
         pygame.event.pump()
@@ -166,11 +234,14 @@ def main():
 
         # Draw loop
         screen.fill(BACKGROUND)
+
+        background.draw(screen)
         player.draw(screen)
         blocks.draw(screen)
+        spikes.draw(screen)
         pygame.display.flip()
 
-        clock.tick(60)
+        clock.tick(50)
 
 
 
