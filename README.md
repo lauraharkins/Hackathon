@@ -35,7 +35,8 @@ With more time, training and user feedback, the AI would be able to grasp the co
 ### Model
 The model is a fine-tuned version of (distilgpt2)[https://huggingface.co/distilbert/distilgpt2] which we have uploaded (here)[https://huggingface.co/Alistair-R/EncodeHackathonLevelGen]. To train the model to generate level schematics, the platformer levels had to be encoded as a string of characters. We used '#' for a platform (or border), 'S' for start, 'E' for end and 'H' for a hazard. Fine-tuning the model required 200 randomly generated level schematics and was quick (~20mins) due to the small dataset size. At the end of training, the model loss was around 0.28 which was sufficient to generate consistent playable levels. As part of the fine-tuning, the training data schematics were tokenized and the model was retrained on the tokens. After finetuning the model with strings of this nature, the model quickly grasped the expected format of the output and produced similar strings to represent levels. An example output of the model is given here:
 
-```LevelSchematic:################
+```
+LevelSchematic:################
 #             E#
 #####       ###
 #              #
@@ -55,7 +56,8 @@ The model is a fine-tuned version of (distilgpt2)[https://huggingface.co/distilb
 
  which was processed with a short function to ensure all the lines of the level were the correct size by adding/removing spaces to produce the following:
 
-```################
+```
+################
 #             E#
 #####        ###
 #              #
