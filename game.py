@@ -23,6 +23,8 @@ class Sprite(pygame.sprite.Sprite):
 class Player(Sprite):
     def __init__(self, startx, starty):
         super().__init__(pygame.image.load("Assets/Pixel Adventure 1/Free/Main Characters/Pink Man/Jump (32x32).png"), startx, starty)
+        self.startx = startx
+        self.starty = starty
 
         self.speed = 4
         self.jump_speed = 20
@@ -40,24 +42,50 @@ class Player(Sprite):
         self.run = load_sprite_sheet("Assets/Pixel Adventure 1/Free/Main Characters/Pink Man/Run (32x32).png", 12)
         self.jump_image = pygame.image.load("Assets/Pixel Adventure 1/Free/Main Characters/Pink Man/Jump (32x32).png")
 
-    def check_collision(self, x, y, blocks):
+    def get_collision(self, x, y, blocks):
         self.rect.move_ip([x,y])
         collide = pygame.sprite.spritecollideany(self, blocks)
         self.rect.move_ip([-x,-y])
         return collide
+
+    def check_collision(self, x, y, spikes, goal):
+        self.rect.move_ip([x,y])
+        if pygame.sprite.spritecollideany(self, spikes):
+            self.rect.move_ip([-x,-y])
+            return 'S'
+        elif pygame.sprite.spritecollideany(self, goal):
+            self.rect.move_ip([-x,-y])
+            return 'G'
+        else:
+            self.rect.move_ip([-x,-y])
+            return ' '
+
+    def reset(self):
+        self.rect.x = self.startx
+        self.rect.y = self.starty
+        self.vsp = 0
+        self.hsp = 0
     
-    def move(self, x, y, blocks):
+    def move(self, x, y, blocks, spikes, goal):
         dx = x
         dy = y
 
+        # Check for victory or spike first
+        if self.check_collision(self, dx, dy, spikes, goal) == 'S':
+            # back to start
+            self.reset()
+        
+        elif self.check_collision(self, dx, dy, spikes, goal) == 'G':
+            NEW_LEVEL = True
+
         if dy < 0:
-            while self.check_collision(0, dy, blocks):
+            while self.get_collision(0, dy, blocks):
                 dy += 1
                 self.vsp = 0
         else:
-            while self.check_collision(0, dy, blocks):
+            while self.get_collision(0, dy, blocks):
                 dy -= 1
-        while self.check_collision(dx, dy, blocks):
+        while self.get_collision(dx, dy, blocks):
             dx -= numpy.sign(dx)
 
         self.rect.move_ip([dx,dy])
@@ -164,12 +192,15 @@ def load_tiles():
     tilemap["grass_9"] = double_size(tiles[2][8])
     tilemap["background"] = pygame.image.load("Assets/Pixel Adventure 1/Free/Background/Brown.png")
     tilemap["spike"] = double_size(pygame.image.load("Assets/Pixel Adventure 1/Free/Traps/Spiked Ball/Spiked Ball.png"))
+    tilemap["end"] = pygame.transform.scale(pygame.image.load("Assets/Pixel Adventure 1/Free/Items/Checkpoints/End/End (Idle).png"),(32,32))
+
 
 #def choose_tile(x,y):
 
 class Level:
     def __init__(self, block_map):
         self.block_map = block_map
+        self.end_sprite = None
 
         for row in range(len(block_map)):
             for col in range(len(block_map[0])):
@@ -178,13 +209,16 @@ class Level:
                 if block_map[row][col] == 'E':
                     self.end = (col*32+16, row*32+16)
 
-    def draw(self, blocks, spikes):
+    def draw(self, blocks, spikes, goal):
         for row in range(len(self.block_map)):
             for col in range(len(self.block_map[0])):
                 if self.block_map[row][col] == ' ' or self.block_map[row][col] == 'S':
                     continue
                 elif self.block_map[row][col] == 'H':
                     spikes.add(Spike(tilemap["spike"], col*32+16, row*32+16))
+                    continue
+                elif self.block_map[row][col] == 'E':
+                    self.end_sprite = goal.add(Sprite(tilemap["end"], col*32+16, row*32+16))
                     continue
                 else:
                     name = "grass_2"
@@ -206,20 +240,22 @@ def load_level(filename):
     f.close()
     return level
 
+# flag
+NEW_LEVEL = False
 
 def main():
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     clock = pygame.time.Clock()
 
-
     blocks = pygame.sprite.Group()
     spikes = pygame.sprite.Group()
+    goal = pygame.sprite.Group()
     background = pygame.sprite.Group()
     load_tiles()
     level = Level(load_level("levels_10.txt"))
     player = Player(level.start[0]+16, level.start[1]+16)
-    level.draw(blocks, spikes)
+    level.draw(blocks, spikes, goal)
 
     # for blk in range(8, WIDTH, 16):
     #     blocks.add(Block(tilemap["grass_2"], blk, HEIGHT-8))
@@ -232,6 +268,16 @@ def main():
         pygame.event.pump()
         player.update(blocks)
 
+        if NEW_LEVEL:
+            blocks = pygame.sprite.Group()
+            spikes = pygame.sprite.Group()
+            goal = pygame.sprite.Group()
+            load_tiles()
+            # HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+            level = Level("HEREEEE")
+            player = Player(level.start[0]+16, level.start[1]+16)
+            level.draw(blocks, spikes, goal)
+
         # Draw loop
         screen.fill(BACKGROUND)
 
@@ -239,6 +285,7 @@ def main():
         player.draw(screen)
         blocks.draw(screen)
         spikes.draw(screen)
+        goal.draw(screen)
         pygame.display.flip()
 
         clock.tick(50)
