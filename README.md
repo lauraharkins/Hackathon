@@ -25,3 +25,6 @@ Secondly, video game developers, particularly indie video game developers, would
 
 
 ## Technical Details
+### Game
+
+### Model
