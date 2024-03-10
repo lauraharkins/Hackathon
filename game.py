@@ -61,8 +61,8 @@ class Player(Sprite):
             return ' '
 
     def reset(self):
-        self.rect.x = self.startx
-        self.rect.y = self.starty
+        self.rect.x = self.startx-16
+        self.rect.y = self.starty-16
         self.vsp = 0
         self.hsp = 0
     
@@ -71,11 +71,11 @@ class Player(Sprite):
         dy = y
 
         # Check for victory or spike first
-        if self.check_collision(self, dx, dy, spikes, goal) == 'S':
+        if self.check_collision(dx, dy, spikes, goal) == 'S':
             # back to start
             self.reset()
         
-        elif self.check_collision(self, dx, dy, spikes, goal) == 'G':
+        elif self.check_collision(dx, dy, spikes, goal) == 'G':
             NEW_LEVEL = True
 
         if dy < 0:
@@ -117,9 +117,9 @@ class Player(Sprite):
         if self.facing_left:
             self.image = pygame.transform.flip(self.image, True, False)
 
-    def update(self, blocks):
+    def update(self, blocks, spikes, goal):
         self.hsp = 0
-        onground = self.check_collision(0, 1, blocks)
+        onground = self.get_collision(0, 1, blocks)
 
         # check keys
         key = pygame.key.get_pressed()
@@ -144,7 +144,7 @@ class Player(Sprite):
             self.vsp = 0
 
         # movement 
-        self.move(self.hsp, self.vsp, blocks)
+        self.move(self.hsp, self.vsp, blocks, spikes, goal)
 
 class Block(Sprite):
     def __init__(self, sprite, startx, starty):
@@ -205,7 +205,7 @@ class Level:
         for row in range(len(block_map)):
             for col in range(len(block_map[0])):
                 if block_map[row][col] == 'S':
-                    self.start = (col*32+16, row*32+16)
+                    self.start = (col*32, row*32)
                 if block_map[row][col] == 'E':
                     self.end = (col*32+16, row*32+16)
 
@@ -266,7 +266,7 @@ def main():
 
     while True:
         pygame.event.pump()
-        player.update(blocks)
+        player.update(blocks, spikes, goal)
 
         if NEW_LEVEL:
             blocks = pygame.sprite.Group()
